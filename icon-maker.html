@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Icon maker — ق tile</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@700&display=swap">
+<style>
+body{font:16px/1.5 system-ui,sans-serif;margin:1rem auto;padding:0 1rem;max-width:44rem}
+select,input,button{font:inherit;padding:.5rem .7rem;margin:.25rem 0}button{border:0;border-radius:.5rem;background:#b45309;color:#fff}
+.row{display:flex;gap:1rem;flex-wrap:wrap}.card{text-align:center}canvas{width:150px;height:150px;background:#ddd;border-radius:8px}
+</style></head><body>
+<h1>Icon maker (ق)</h1>
+<p>Draws the tile icon with the font you choose, then downloads the PNGs. Put the downloaded files in the <code>icons/</code> folder (same names) and redeploy.</p>
+<label>Font:
+<select id="font"><option value="Traditional Arabic">Traditional Arabic (only if installed on this device)</option><option value="Amiri" selected>Amiri (web font, loads online)</option><option value="custom">Custom font file…</option></select></label><br>
+<input type="file" id="file" accept=".ttf,.otf,.woff,.woff2" hidden>
+<label>Letter size: <input type="range" id="scale" min="70" max="140" value="105"></label><br>
+<button id="go">Draw preview</button> <button id="all">Download all 5 PNGs</button>
+<div class="row" id="previews"></div>
+<script>
+const SPECS=[['icon-192.png',192,'any'],['icon-512.png',512,'any'],['icon-maskable-192.png',192,'maskable'],['icon-maskable-512.png',512,'maskable'],['apple-touch-icon.png',180,'apple']];
+const $=id=>document.getElementById(id);const LETTER='ق';
+let family='Amiri';
+function rr(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r)}
+async function useFont(){
+  const v=$('font').value;
+  if(v==='custom'){const f=$('file').files[0];if(!f){$('file').click();throw new Error('choose a font file first')}
+    const ff=new FontFace('UserFont',await f.arrayBuffer());await ff.load();document.fonts.add(ff);family='UserFont'}
+  else{family=v;if(v==='Amiri')await document.fonts.load('700 100px Amiri',LETTER)}
+}
+function draw(S,kind){
+  const cv=document.createElement('canvas');cv.width=cv.height=S;const c=cv.getContext('2d');
+  // wood
+  const g=c.createRadialGradient(S/2,S*.42,0,S/2,S*.42,S*.72);g.addColorStop(0,'#8c5a3a');g.addColorStop(1,'#26170e');c.fillStyle=g;c.fillRect(0,0,S,S);
+  c.lineWidth=Math.max(1,S/190);for(let y=0;y<S;y+=S/48){c.strokeStyle=`rgba(0,0,0,${.05+.04*Math.sin(y)})`;c.beginPath();
+    for(let x=0;x<=S;x+=S/24)c.lineTo(x,y+Math.sin(x/S*9+y)*S*.004);c.stroke()}
+  const t=S*(kind==='any'?.62:.56),x0=(S-t)/2,y0=(S-t)/2-S*.012,r=t*.15;
+  if(kind==='any'){c.strokeStyle='#d4a853';c.lineWidth=S/110;rr(c,S*.045,S*.045,S*.91,S*.91,S*.13);c.stroke();
+    c.strokeStyle='rgba(212,168,83,.43)';c.lineWidth=S/260;rr(c,S*.07,S*.07,S*.86,S*.86,S*.11);c.stroke()}
+  c.save();c.shadowColor='rgba(0,0,0,.66)';c.shadowBlur=S*.05;c.shadowOffsetY=t*.07;c.fillStyle='#000';rr(c,x0,y0,t,t,r);c.fill();c.restore();
+  c.fillStyle='#b0853e';rr(c,x0,y0+t*.045,t,t,r);c.fill();
+  const tg=c.createLinearGradient(0,y0,0,y0+t);tg.addColorStop(0,'#fff7d7');tg.addColorStop(1,'#eed798');c.fillStyle=tg;rr(c,x0,y0,t,t,r);c.fill();
+  c.strokeStyle='rgba(255,255,240,.8)';c.lineWidth=S/300;rr(c,x0,y0,t,t,r);c.stroke();
+  const i=t*.055;c.strokeStyle='#c49640';c.lineWidth=S/330;rr(c,x0+i,y0+i,t-2*i,t-2*i,r*.7);c.stroke();
+  const sc=$('scale').value/100;c.font=`700 ${t*1.0*sc}px "${family}", serif`;c.textAlign='left';c.textBaseline='alphabetic';
+  const m=c.measureText(LETTER);const x=S/2-(m.actualBoundingBoxRight-m.actualBoundingBoxLeft)/2;
+  const y=y0+t/2+(m.actualBoundingBoxAscent-m.actualBoundingBoxDescent)/2;
+  c.fillStyle='rgba(255,255,255,.75)';c.fillText(LETTER,x+t*.008,y+t*.012);c.fillStyle='#085c28';c.fillText(LETTER,x,y);
+  if(kind==='any'){c.globalCompositeOperation='destination-in';rr(c,0,0,S,S,S*.21);c.fillStyle='#000';c.fill()}
+  return cv;
+}
+async function render(){await useFont();const box=$('previews');box.innerHTML='';
+  for(const [name,S,kind] of SPECS){const cv=draw(S,kind);cv.dataset.name=name;const d=document.createElement('div');d.className='card';
+    d.appendChild(cv);const p=document.createElement('div');p.textContent=name;d.appendChild(p);box.appendChild(d)}}
+function save(cv){return new Promise(res=>cv.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=cv.dataset.name;a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);res()},400)},'image/png'))}
+$('go').onclick=()=>render().catch(e=>alert(e.message));
+$('all').onclick=async()=>{try{await render();for(const cv of document.querySelectorAll('#previews canvas'))await save(cv)}catch(e){alert(e.message)}};
+$('font').onchange=()=>{if($('font').value==='custom')$('file').click()};$('file').onchange=()=>render().catch(()=>{});
+render().catch(()=>{});
+</script></body></html>
